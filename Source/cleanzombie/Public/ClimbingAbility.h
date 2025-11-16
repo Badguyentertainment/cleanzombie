@@ -5,130 +5,129 @@
 #include "CoreMinimal.h"
 #include "ZombieAbilityComponent.h"
 #include "ZombieClimbingMovementComponent.h"
-#include "ClimbingAIComponent.generated.h"
+#include "ClimbingAbility.generated.h"
 
 /**
- * Climbing ability component for zombies
- * Provides wall and ceiling climbing capabilities with AI decision-making
- * Inherits from ZombieAbilityComponent for modular ability system
+ * Climbing ability - enables wall and ceiling climbing for zombies
+ * Refactored version that integrates with the modular ability framework
+ * Use this instead of ClimbingAIComponent for new implementations
  */
 UCLASS(ClassGroup = (ZombieAbilities), meta = (BlueprintSpawnableComponent))
-class CLEANZOMBIE_API UClimbingAIComponent : public UZombieAbilityComponent
+class CLEANZOMBIE_API UClimbingAbility : public UZombieAbilityComponent
 {
 	GENERATED_BODY()
 
 public:
-	UClimbingAIComponent();
+	UClimbingAbility();
 
 protected:
 	virtual void BeginPlay() override;
 
 public:
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	// ========================================
+	// ABILITY OVERRIDES
+	// ========================================
+
+	virtual void InitializeAbility_Implementation() override;
+	virtual bool ActivateAbility_Implementation() override;
+	virtual void DeactivateAbility_Implementation() override;
+	virtual void UpdateAbility_Implementation(float DeltaTime) override;
+	virtual bool CanActivate_Implementation() const override;
+
+	virtual void OnZombieDetectedTarget_Implementation(AActor* DetectedActor) override;
+	virtual void OnZombieLostTarget_Implementation(AActor* LostActor) override;
 
 	// ========================================
-	// AI CONFIGURATION
+	// CLIMBING CONFIGURATION
 	// ========================================
 
 	/** Should AI automatically decide when to climb? */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Behavior")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Behavior")
 	bool bAutoClimbing = true;
 
 	/** How often to check for climbing opportunities (seconds) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Behavior", meta = (ClampMin = "0.1", ClampMax = "5.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Behavior", meta = (ClampMin = "0.1", ClampMax = "5.0"))
 	float ClimbingCheckInterval = 0.5f;
 
 	/** Prefer climbing to reach target if path is blocked? */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Behavior")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Behavior")
 	bool bClimbWhenPathBlocked = true;
 
 	/** Distance at which to consider climbing to reach target */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Behavior", meta = (ClampMin = "0.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Behavior", meta = (ClampMin = "0.0"))
 	float ClimbingConsiderationDistance = 500.0f;
 
 	/** Should drop from ceiling/walls to attack targets below? */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Attack")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Attack")
 	bool bDropToAttack = true;
 
 	/** Distance from target to drop for attack */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Attack", meta = (ClampMin = "0.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Attack", meta = (ClampMin = "0.0"))
 	float DropAttackDistance = 300.0f;
 
 	/** Vertical distance threshold for drop attacks */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Attack", meta = (ClampMin = "0.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Attack", meta = (ClampMin = "0.0"))
 	float DropAttackHeightMin = 100.0f;
 
 	/** Maximum height from which to drop */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Attack", meta = (ClampMin = "0.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Attack", meta = (ClampMin = "0.0"))
 	float MaxDropHeight = 1000.0f;
 
 	/** Prefer walls over ground when both paths available? */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Behavior")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Behavior")
 	bool bPreferClimbingPaths = false;
 
 	/** Minimum time to spend climbing before considering dropping */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Behavior", meta = (ClampMin = "0.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing Ability|Behavior", meta = (ClampMin = "0.0"))
 	float MinimumClimbTime = 2.0f;
 
-	/** Enable debug visualization for AI decisions */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climbing AI|Debug")
-	bool bShowDebugInfo = false;
-
 	// ========================================
-	// AI STATE
+	// CLIMBING STATE
 	// ========================================
-
-	/** Current AI target actor (usually a player) */
-	UPROPERTY(BlueprintReadWrite, Category = "Climbing AI|State")
-	AActor* CurrentTarget;
 
 	/** Is AI currently trying to climb? */
-	UPROPERTY(BlueprintReadOnly, Category = "Climbing AI|State")
+	UPROPERTY(BlueprintReadOnly, Category = "Climbing Ability|State")
 	bool bWantsToClimb = false;
 
 	/** Time spent in current climbing session */
-	UPROPERTY(BlueprintReadOnly, Category = "Climbing AI|State")
+	UPROPERTY(BlueprintReadOnly, Category = "Climbing Ability|State")
 	float CurrentClimbTime = 0.0f;
 
 	// ========================================
-	// AI FUNCTIONS
+	// CLIMBING FUNCTIONS
 	// ========================================
 
-	/** Manually set AI target */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
-	void SetTarget(AActor* NewTarget);
-
 	/** Check if should start climbing toward target */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
+	UFUNCTION(BlueprintCallable, Category = "Climbing Ability")
 	bool ShouldClimbToTarget();
 
 	/** Check if should drop to attack target */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
+	UFUNCTION(BlueprintCallable, Category = "Climbing Ability")
 	bool ShouldDropToAttack();
 
 	/** Find climbing path to target */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
+	UFUNCTION(BlueprintCallable, Category = "Climbing Ability")
 	bool FindClimbingPath(FVector& OutClimbDirection);
 
 	/** Execute drop attack on target */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
+	UFUNCTION(BlueprintCallable, Category = "Climbing Ability")
 	void ExecuteDropAttack();
 
 	/** Update climbing movement toward target */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
+	UFUNCTION(BlueprintCallable, Category = "Climbing Ability")
 	void UpdateClimbingMovement(float DeltaTime);
 
 	/** Check if target is reachable by climbing */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
+	UFUNCTION(BlueprintCallable, Category = "Climbing Ability")
 	bool IsTargetReachableByClimbing(AActor* Target, float& OutDistance);
 
 	/** Find nearest climbable surface */
-	UFUNCTION(BlueprintCallable, Category = "Climbing AI")
+	UFUNCTION(BlueprintCallable, Category = "Climbing Ability")
 	bool FindNearestClimbableSurface(FVector& OutLocation, FVector& OutNormal);
 
 protected:
 	// ========================================
-	// INTERNAL AI LOGIC
+	// INTERNAL CLIMBING LOGIC
 	// ========================================
 
 	/** Evaluate if climbing is beneficial */
@@ -156,10 +155,6 @@ private:
 	/** Cached climbing movement component */
 	UPROPERTY()
 	UZombieClimbingMovementComponent* ClimbingMovement;
-
-	/** Cached character owner */
-	UPROPERTY()
-	ACharacter* OwnerCharacter;
 
 	/** Time since last climbing check */
 	float TimeSinceLastCheck = 0.0f;
