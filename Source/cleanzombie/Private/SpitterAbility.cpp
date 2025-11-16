@@ -1,9 +1,12 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SpitterAbility.h"
+#include "ZombieProjectileBase.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "DrawDebugHelpers.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 USpitterAbility::USpitterAbility()
 {
@@ -93,24 +96,58 @@ void USpitterAbility::SpitAtTarget()
 		SpawnLocation = Mesh->GetSocketLocation(SpitSocketName);
 	}
 
-	// Calculate direction
-	FVector SpitDirection = CalculateSpitDirection();
+	// Calculate target location with prediction
+	FVector TargetLocation = CurrentTarget->GetActorLocation();
+
+	if (bPredictTargetMovement)
+	{
+		// Predict where target will be
+		ACharacter* TargetCharacter = Cast<ACharacter>(CurrentTarget);
+		if (TargetCharacter && TargetCharacter->GetCharacterMovement())
+		{
+			FVector TargetVelocity = TargetCharacter->GetCharacterMovement()->Velocity;
+			float Distance = FVector::Dist(SpawnLocation, TargetLocation);
+			float TimeToHit = Distance / ProjectileSpeed;
+
+			// Add predicted movement
+			TargetLocation += TargetVelocity * TimeToHit;
+		}
+	}
 
 	// Spawn projectile
 	FTransform SpawnTransform;
 	SpawnTransform.SetLocation(SpawnLocation);
-	SpawnTransform.SetRotation(SpitDirection.ToOrientationQuat());
+	SpawnTransform.SetRotation(FRotator::ZeroRotator);
 
 	AActor* Projectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnTransform);
 
-	// TODO: Set projectile damage, speed, etc.
+	// Configure projectile if it's a ZombieProjectileBase
+	if (AZombieProjectileBase* ZombieProjectile = Cast<AZombieProjectileBase>(Projectile))
+	{
+		// Set owner for damage attribution
+		ZombieProjectile->SetOwner(OwnerZombie);
+		ZombieProjectile->ProjectileOwner = OwnerZombie;
+
+		// Fire with arc trajectory
+		float Distance = FVector::Dist(SpawnLocation, TargetLocation);
+		float ArcHeight = FMath::Lerp(100.0f, 300.0f, Distance / MaxSpitRange);
+
+		ZombieProjectile->FireWithArc(TargetLocation, ArcHeight);
+
+		if (bShowDebug)
+		{
+			DrawDebugLine(GetWorld(), SpawnLocation, TargetLocation, FColor::Green, false, 2.0f, 0, 2.0f);
+			DrawDebugSphere(GetWorld(), TargetLocation, 50.0f, 12, FColor::Red, false, 2.0f);
+		}
+	}
 
 	// Reset cooldown
 	TimeSinceLastSpit = 0.0f;
 
 	if (bShowDebug)
 	{
-		UE_LOG(LogTemp, Log, TEXT("SpitterAbility: Spit at target!"));
+		UE_LOG(LogTemp, Log, TEXT("SpitterAbility: Spit at target %s at distance %.1f"),
+			*CurrentTarget->GetName(), FVector::Dist(SpawnLocation, TargetLocation));
 	}
 }
 
@@ -134,7 +171,28 @@ bool USpitterAbility::CanSpitAtTarget() const
 		return false;
 	}
 
-	// TODO: Check line of sight
+	// Check line of sight
+	FVector StartLocation = OwnerZombie->GetActorLocation() + FVector(0, 0, 50);
+	FVector EndLocation = CurrentTarget->GetActorLocation();
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(OwnerZombie);
+	QueryParams.AddIgnoredActor(CurrentTarget);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		StartLocation,
+		EndLocation,
+		ECC_Visibility,
+		QueryParams
+	);
+
+	// If we hit something between us and the target, we don't have LOS
+	if (bHit)
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -146,9 +204,23 @@ FVector USpitterAbility::CalculateSpitDirection() const
 		return OwnerZombie ? OwnerZombie->GetActorForwardVector() : FVector::ForwardVector;
 	}
 
-	FVector ToTarget = CurrentTarget->GetActorLocation() - OwnerZombie->GetActorLocation();
+	FVector TargetLocation = CurrentTarget->GetActorLocation();
 
-	// TODO: Add prediction for moving targets if bPredictTargetMovement
+	// Apply target prediction if enabled
+	if (bPredictTargetMovement)
+	{
+		ACharacter* TargetCharacter = Cast<ACharacter>(CurrentTarget);
+		if (TargetCharacter && TargetCharacter->GetCharacterMovement())
+		{
+			FVector TargetVelocity = TargetCharacter->GetCharacterMovement()->Velocity;
+			float Distance = FVector::Dist(OwnerZombie->GetActorLocation(), TargetLocation);
+			float TimeToHit = Distance / FMath::Max(ProjectileSpeed, 100.0f);
 
+			// Add predicted movement
+			TargetLocation += TargetVelocity * TimeToHit;
+		}
+	}
+
+	FVector ToTarget = TargetLocation - OwnerZombie->GetActorLocation();
 	return ToTarget.GetSafeNormal();
 }
