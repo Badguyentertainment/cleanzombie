@@ -1,0 +1,84 @@
+================================================================================
+QUICK FIX FOR H:\Cplusszombiegame-main (AND ALL OTHER UNREAL PROJECTS)
+================================================================================
+
+METHOD 1: UNIVERSAL FIX (Fixes ALL Your Projects)
+--------------------------------------------------
+
+1. Run: Fix-NU1701-AllProjects.bat (double-click)
+
+   OR in PowerShell:
+   .\Fix-NU1701-AllProjects.ps1 -ScanAllDrives
+
+2. The script will find and fix ALL Unreal Engine projects including:
+   - H:\Cplusszombiegame-main
+   - Any other projects on your computer
+
+3. For each project found, regenerate Visual Studio files:
+   - Right-click .uproject
+   - "Generate Visual Studio project files"
+
+4. Open and rebuild in Visual Studio
+
+DONE! ✅
+
+
+METHOD 2: MANUAL FIX (For H:\Cplusszombiegame-main specifically)
+-----------------------------------------------------------------
+
+1. Copy this file to H:\Cplusszombiegame-main\:
+   Directory.Build.props.COPY_THIS
+
+   Rename it to: Directory.Build.props
+
+2. Navigate to: H:\Cplusszombiegame-main\
+
+3. Right-click the .uproject file
+
+4. "Generate Visual Studio project files"
+
+5. Open the .sln in Visual Studio
+
+6. Build → Rebuild Solution
+
+DONE! ✅
+
+
+METHOD 3: USE SCRIPT FOR SPECIFIC PROJECT
+------------------------------------------
+
+PowerShell (as Administrator):
+
+cd path\to\cleanzombie
+.\Fix-NU1701-AllProjects.ps1 -ProjectPath "H:\Cplusszombiegame-main\YourProject.uproject"
+
+(Replace YourProject.uproject with actual filename)
+
+DONE! ✅
+
+
+WHAT GETS FIXED
+---------------
+✓ NU1701 NuGet warning suppressed
+✓ Directory.Build.props created
+✓ VisualStudioTools plugin checked/enabled
+✓ Ready to build without errors
+
+
+FILES YOU CAN COPY TO OTHER PROJECTS
+-------------------------------------
+- Directory.Build.props.COPY_THIS (rename to Directory.Build.props)
+- Fix-NU1701-AllProjects.ps1
+- Fix-NU1701-AllProjects.bat
+
+Just copy these to any Unreal project and run the .bat file!
+
+
+NEED MORE HELP?
+---------------
+See these detailed guides:
+- FIX_FOR_Cplusszombiegame.md (specific to your H:\ project)
+- APPLY_FIX_TO_ALL_PROJECTS.md (universal fix guide)
+- FIX_NU1701_ERROR.md (troubleshooting)
+
+================================================================================
